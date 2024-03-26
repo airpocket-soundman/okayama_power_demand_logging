@@ -1,0 +1,2 @@
+# okayama_power_demand_logging
+岡山工場電力監視システムセットアップ内容記録
