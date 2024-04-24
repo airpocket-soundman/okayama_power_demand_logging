@@ -2,15 +2,57 @@
 岡山工場電力監視システムセットアップ内容記録
 
 # システム構成
+工場WiFi接続用ゲートウェイ:Raspberry Pi 4B
+ウェブロガー:DL30-G-R  
+ワイヤレスゲートウェイ(ether側):WL40EW2  
+ワイヤレスゲートウェイ(modubs側):WL5MW1  
+電流マルチ変換：M5XWT-113  
 
-ウェブロガー:DL30-G-R
-ワイヤレスゲートウェイ(ether側):WL40EW2
-ワイヤレスゲートウェイ(modubs側):WL5MW1
-電流マルチ変換：M5XWT-113
+
+# Raspberr Pi 4B WiFiゲートウェイ
+WiFi側
+IP:192.168.101.250
+
+eth0側
+IP:192.168.10.1
+
+## セットアップ
+OS:Bookworm 64bit
 
 
-# DL30-G-R webロガー
-IP:192.168.1.61
+```
+sudo apt update
+sudo apt upgrade -y
+sudo apt install iptables-persistent
+
+nmcli con mod "wlao0接続名" ipv4.addresses "192.168.101.250/24" ipv4.gateway "192.168.101.1" ipv4.dns "8.8.8.8,8.8.4.4" ipv4.method manual
+nmcli con up "wlan0接続名"
+
+nmcli con mod "eth0接続名" ipv4.addresses '192.168.10.1/24' ipv4.method manual
+nmcli con up "eth0接続名"
+
+
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# NAT設定
+sudo iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE
+
+# HTTPおよびHTTPSのポートフォワーディング
+sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j DNAT --to-destination 192.168.10.2:80
+sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 443 -j DNAT --to-destination 192.168.10.2:443
+sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 81 -j DNAT --to-destination 192.168.10.3:80
+sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 444 -j DNAT --to-destination 192.168.10.3:443
+
+# iptablesの設定を保存
+sudo netfilter-persistent save
+
+```
+
+
+# DL30-G-R webロガー2
+IP:192.168.10.2
+デフォルトゲートウェイ:192.168.10.1
 ## セットアップ
 manual:nmdl30_g.pdf
 setup tool:DL30GCFG
@@ -23,7 +65,7 @@ pass:minoru0869553434
 
 
 # WL40EW2 920MHz ゲートウェイether
-IP:192.168.1.60
+IP:192.168.10.3
 ## setup
 manual:nmwl40ew2_b.pdf
 設定はブラウザにて行う。
